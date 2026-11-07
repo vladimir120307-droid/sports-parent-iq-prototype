@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sports Parent IQ: Prototype</title>
+<meta name="description" content="Which of 10 sports parents are you? A clickable prototype of the quiz flow.">
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --field: #0f3d2e; --field-2: #17563f; --chalk: #fbfaf5; --ink: #14211c; --muted: #5d6b65;
+    --score: #ffd23f; --good: #1f9d68; --bad: #d9483b; --line: #dfe5df;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { background: var(--field); color: var(--ink); font: 17px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+  #app { max-width: 480px; min-height: 100%; margin: 0 auto; background: var(--chalk); display: flex; flex-direction: column; }
+  .pad { padding: 22px 20px; }
+  .hero { background: linear-gradient(160deg, var(--field), var(--field-2)); color: #fff; padding: 34px 20px 28px; }
+  .kicker { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--score); font-weight: 700; }
+  h1 { font-size: 38px; line-height: 1.05; margin: 10px 0 12px; letter-spacing: -.02em; }
+  h2 { font-size: 25px; line-height: 1.15; letter-spacing: -.01em; }
+  h3 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .hero p { color: #dcebe4; }
+  button { font: inherit; cursor: pointer; border: 0; }
+  .cta { display: block; width: 100%; background: var(--score); color: var(--ink); font-weight: 800; font-size: 19px; padding: 16px; border-radius: 12px; transition: transform .12s; }
+  .cta:active { transform: scale(.98); }
+  .ghost { display: block; width: 100%; background: #fff; border: 2px solid var(--line); color: var(--ink); font-weight: 650; padding: 13px; border-radius: 12px; text-align: center; text-decoration: none; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stack > * + * { margin-top: 10px; }
+  .challenge { background: var(--score); color: var(--ink); font-weight: 700; padding: 12px 20px; }
+  .scoreboard { background: var(--ink); color: var(--score); display: flex; justify-content: space-between; padding: 12px 20px; font: 700 15px ui-monospace, Consolas, monospace; }
+  .track { height: 6px; background: var(--field-2); }
+  .track i { display: block; height: 100%; background: var(--score); transition: width .35s; }
+  .answer { display: block; width: 100%; text-align: left; background: #fff; border: 2px solid var(--line); border-radius: 12px; padding: 14px 15px; margin-top: 10px; color: var(--ink); line-height: 1.3; animation: rise .25s both; }
+  .answer:hover { border-color: var(--field-2); }
+  .answer.picked { background: var(--field); border-color: var(--field); color: #fff; }
+  .answer:disabled { cursor: default; }
+  .quip { margin-top: 14px; min-height: 46px; font-weight: 650; color: var(--field-2); }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+  .iq { font: 800 92px/1 system-ui, sans-serif; color: var(--score); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .band { display: inline-block; background: var(--score); color: var(--ink); font-weight: 800; font-size: 13px; padding: 3px 9px; border-radius: 99px; text-transform: uppercase; letter-spacing: .06em; }
+  .note { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 13px 15px; }
+  .good { border-left: 5px solid var(--good); } .bad { border-left: 5px solid var(--bad); }
+  canvas { width: 100%; height: auto; display: block; border-radius: 12px; }
+  input { font: inherit; width: 100%; padding: 13px; border: 2px solid var(--line); border-radius: 12px; }
+  .small { font-size: 13px; color: var(--muted); }
+  .vs { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; text-align: center; font-weight: 700; }
+  .vs b { display: block; font-size: 34px; color: var(--field); }
+  footer { margin-top: auto; padding: 14px 20px 22px; font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); }
+  code { font: 12px ui-monospace, Consolas, monospace; word-break: break-word; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+/* Everything editable lives here: questions, answer scores, result text. Changing the quiz never touches the code below. */
+const QUIZ = {
+  questions: [
+    { q: "The ref just missed an obvious call. You...", a: [
+      { t: "Explain the rulebook. Loudly. From the parking lot.", type: "rager", iq: -8, quip: "The ref has noted your concern. So has the next county." },
+      { t: "Didn't see it. You were answering an email.", type: "scroller", iq: -4, quip: "Your inbox had a great first half." },
+      { t: "Clap for the kids and let it go.", type: "supporter", iq: 6, quip: "Rare skill. Scouts are watching." },
+      { t: "Inform the other team's parents whose fault this really is.", type: "bully", iq: -6, quip: "They didn't ask. They never ask." } ] },
+    { q: "It's the ride home after a loss. What's playing?", a: [
+      { t: "Me, breaking down the second half.", type: "carcoach", iq: -8, quip: "Fun fact: the back seat has no exit." },
+      { t: "Whatever they pick. We're stopping for fries.", type: "balance", iq: 8, quip: "Fries: undefeated since forever." },
+      { t: "A list of what the coach got wrong.", type: "control", iq: -6, quip: "The coach would love your notes. No, really." },
+      { t: "\"I loved watching you play.\" Then quiet.", type: "grateful", iq: 8, quip: "Six words. Best thing said all day." } ] },
+    { q: "Your kid is on the bench. Where are your eyes?", a: [
+      { t: "On the coach. We need to discuss minutes.", type: "control", iq: -8, quip: "Your calendar invite has been declined." },
+      { t: "On my phone. Is it over?", type: "scroller", iq: -6, quip: "Fourth quarter. They waved at you twice." },
+      { t: "On the whole team. Someone's kid just made a great pass.", type: "teamplayer", iq: 8, quip: "That kid's parent was on their phone, by the way." },
+      { t: "On the loud dad across the field. I'm about to set him straight.", type: "bully", iq: -8, quip: "You two should really get a room. Or a referee." } ] },
+    { q: "Snack duty is this Saturday. You...", a: [
+      { t: "Bring orange slices and remember the kid with the allergy.", type: "teamplayer", iq: 6, quip: "Legend behavior. Orange slices forever." },
+      { t: "Bring the snacks and the loudest cheer in the league.", type: "cheerleader", iq: 6, quip: "Even the other team likes you." },
+      { t: "Hand out snacks, plus a quick word on everyone's footwork.", type: "carcoach", iq: -4, quip: "They're seven. The orange slice was enough." },
+      { t: "Swap with someone. Other kid has a thing, and that's fine.", type: "balance", iq: 4, quip: "You can't be at two fields. You've checked." } ] },
+    { q: "Your kid says they might want to quit. Your first words?", a: [
+      { t: "\"After everything we've paid for?\"", type: "rager", iq: -8, quip: "Oof. The invoice has entered the chat." },
+      { t: "\"Tell me more. What's stopped being fun?\"", type: "supporter", iq: 8, quip: "That's the whole playbook, right there." },
+      { t: "\"Thanks for telling me. I've loved every season.\"", type: "grateful", iq: 8, quip: "Somebody's going to remember that one." },
+      { t: "\"Whatever you choose, I'm still your biggest fan.\"", type: "cheerleader", iq: 6, quip: "Foam finger optional. Message received." } ] },
+  ],
+  types: {
+    rager:       { name: "The Rager",           line: "You bring the energy. All of it. To everyone.", plus: "Nobody cares about the game more than you do.", watch: "Your kid can hear you. So can the next field.", read: "What refs wish parents knew" },
+    scroller:    { name: "The Scroller",        line: "You've attended every game, in the legal sense.", plus: "You show up, week after week, and that counts.", watch: "They look for you after a good play.", read: "Ten minutes without the phone: a parent's experiment" },
+    carcoach:    { name: "The Car Coach",       line: "The post-game analysis is mandatory and has no exit.", plus: "You really do know the game.", watch: "The ride home is the part they remember.", read: "What to say on the ride home" },
+    control:     { name: "The Control Freak",   line: "You have thoughts on the rotation, and a shared doc.", plus: "Nothing falls through the cracks with you around.", watch: "Coaches coach. Kids play. You get to watch.", read: "How to talk to a coach, and when not to" },
+    bully:       { name: "The Sideline Bully",  line: "You've never lost an argument with a stranger's dad.", plus: "You'd go to war for your kid.", watch: "Kids copy what you do on the sideline.", read: "Keeping the sideline a kid-friendly place" },
+    cheerleader: { name: "The Cheerleader",     line: "Every kid on the field knows your voice, in a good way.", plus: "You make the whole team feel seen.", watch: "Sometimes they just need you to be quiet and close.", read: "The cheers kids actually like" },
+    supporter:   { name: "The Supporter",       line: "Calm, steady, and always there with a water bottle.", plus: "Your kid plays with less fear because of you.", watch: "Tell them out loud. They can't read your calm.", read: "Raising a kid who keeps playing" },
+    balance:     { name: "The Balance Builder", line: "Sports matter here. So do fries, sleep and homework.", plus: "Your kid gets to be a whole person.", watch: "Check in sometimes. They may want more than you think.", read: "How much is too much youth sports?" },
+    teamplayer:  { name: "The Team Player",     line: "You know every kid's name, and which ones forgot cleats.", plus: "You make the team better without ever touching the ball.", watch: "Your own kid still wants your eyes on them.", read: "Being the parent every team needs" },
+    grateful:    { name: "The Grateful Parent", line: "You know these seasons go fast, and you act like it.", plus: "Your kid will remember how you made it feel.", watch: "It's OK to admit when a Saturday was rough.", read: "Letters from parents of grown athletes" },
+  },
+  bands: [ { min: 118, label: "Hall of Fame" }, { min: 100, label: "Starting Lineup" }, { min: 84, label: "Second String" }, { min: 0, label: "Red Card" } ],
+  baseIQ: 100,
+};
+
+const app = document.getElementById("app");
+const params = new URLSearchParams(location.search);
+const rival = QUIZ.types[params.get("vs")] ? { type: params.get("vs"), score: Number(params.get("s")) || null } : null;
+const state = { index: 0, iq: QUIZ.baseIQ, tally: {}, last: null };
+
+function track(name, data = {}) {
+  try {
+    const log = JSON.parse(localStorage.getItem("spiq-events") || "[]");
+    log.push({ name, ...data, at: Date.now() });
+    localStorage.setItem("spiq-events", JSON.stringify(log.slice(-200)));
+  } catch (e) { /* tracking must never break the quiz */ }
+  state.events = (state.events || []).concat(name);
+}
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const footer = () => `<footer>Prototype for discussion: 5 sample questions out of the full set, placeholder artwork, and nothing leaves this page. The final build would use KSNN's art.</footer>`;
+
+function landing() {
+  app.innerHTML = `
+    ${rival ? `<div class="challenge">Someone scored ${rival.score ?? "?"} as ${esc(QUIZ.types[rival.type].name)}. Can you beat that?</div>` : ""}
+    <section class="hero">
+      <div class="kicker">Kids Sports News Network</div>
+      <h1>What's your Sports Parent IQ?</h1>
+      <p>Ten kinds of parents on every sideline. One of them is you. Your friends already know which.</p>
+    </section>
+    <section class="pad stack">
+      <button class="cta" id="go">Take the quiz</button>
+      <p class="small">About a minute. No sign-up. Your kid will not be informed.</p>
+    </section>${footer()}`;
+  document.getElementById("go").onclick = () => { track("quiz_start", { challenged: !!rival }); question(); };
+}
+
+function question() {
+  const item = QUIZ.questions[state.index];
+  const total = QUIZ.questions.length;
+  app.innerHTML = `
+    <div class="scoreboard"><span>Q${state.index + 1} OF ${total}</span><span>IQ ${state.iq}</span></div>
+    <div class="track"><i style="width:${(state.index / total) * 100}%"></i></div>
+    <section class="pad">
+      <h2>${esc(item.q)}</h2>
+      <div id="answers">${item.a.map((a, i) => `<button class="answer" data-i="${i}" style="animation-delay:${i * 50}ms">${esc(a.t)}</button>`).join("")}</div>
+      <p class="quip" id="quip"></p>
+    </section>${footer()}`;
+  app.querySelectorAll(".answer").forEach((button) => {
+    button.onclick = () => {
+      const answer = item.a[Number(button.dataset.i)];
+      app.querySelectorAll(".answer").forEach((b) => { b.disabled = true; });
+      button.classList.add("picked");
+      document.getElementById("quip").textContent = answer.quip;
+      state.iq += answer.iq;
+      state.tally[answer.type] = (state.tally[answer.type] || 0) + Math.abs(answer.iq);
+      state.last = answer.type;
+      track("answer", { q: state.index + 1, type: answer.type });
+      state.index += 1;
+      setTimeout(() => (state.index < total ? question() : result()), 1500);
+    };
+  });
+}
+
+function primaryType() {
+  const entries = Object.entries(state.tally).sort((a, b) => b[1] - a[1]);
+  const top = entries.filter((e) => e[1] === entries[0][1]).map((e) => e[0]);
+  return top.includes(state.last) ? state.last : top[0];
+}
+
+function drawCard(canvas, type, iq, band) {
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  const bg = ctx.createLinearGradient(0, 0, w, h);
+  bg.addColorStop(0, "#0f3d2e"); bg.addColorStop(1, "#17563f");
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = "rgba(255,255,255,.12)"; ctx.lineWidth = 6;
+  ctx.strokeRect(50, 50, w - 100, h - 100);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffd23f"; ctx.font = "700 44px system-ui, sans-serif";
+  ctx.fillText("MY SPORTS PARENT IQ", w / 2, 190);
+  ctx.font = "800 300px system-ui, sans-serif";
+  ctx.fillText(String(iq), w / 2, 500);
+  ctx.fillStyle = "#fff"; ctx.font = "800 84px system-ui, sans-serif";
+  ctx.fillText(QUIZ.types[type].name, w / 2, 680);
+  ctx.fillStyle = "#ffd23f"; ctx.font = "700 40px system-ui, sans-serif";
+  ctx.fillText(band.toUpperCase(), w / 2, 750);
+  ctx.fillStyle = "#dcebe4"; ctx.font = "500 46px system-ui, sans-serif";
+  const words = QUIZ.types[type].line.split(" ");
+  let line = "", y = 860;
+  for (const word of words) {
+    const next = line ? line + " " + word : word;
+    if (ctx.measureText(next).width > w - 200) { ctx.fillText(line, w / 2, y); y += 62; line = word; } else { line = next; }
+  }
+  ctx.fillText(line, w / 2, y);
+  ctx.fillStyle = "#ffd23f"; ctx.font = "800 48px system-ui, sans-serif";
+  ctx.fillText("What's yours?", w / 2, h - 170);
+  ctx.fillStyle = "#fff"; ctx.font = "500 34px system-ui, sans-serif";
+  ctx.fillText("Kids Sports News Network", w / 2, h - 110);
+}
+
+function result() {
+  const type = primaryType();
+  const info = QUIZ.types[type];
+  const iq = state.iq;
+  const band = QUIZ.bands.find((b) => iq >= b.min).label;
+  const base = location.href.split("?")[0];
+  const challengeLink = `${base}?vs=${type}&s=${iq}`;
+  const shareText = `I'm ${info.name} with a Sports Parent IQ of ${iq}. Beat that:`;
+  track("quiz_complete", { type, iq });
+  const beat = rival && rival.score !== null ? (iq > rival.score ? "You win the sideline." : iq === rival.score ? "Dead heat." : "They got you. Rematch at snack time?") : "";
+  app.innerHTML = `
+    <section class="hero" style="text-align:center">
+      <div class="kicker">Your Sports Parent IQ</div>
+      <div class="iq" id="iq">${QUIZ.baseIQ}</div>
+      <span class="band">${esc(band)}</span>
+      <h2 style="margin-top:12px;font-size:30px">${esc(info.name)}</h2>
+      <p style="margin-top:6px">${esc(info.line)}</p>
+    </section>
+    ${rival ? `<section class="pad vs"><div><b>${iq}</b>You</div><div>vs</div><div><b>${rival.score ?? "?"}</b>${esc(QUIZ.types[rival.type].name)}</div></section><p class="small" style="text-align:center">${esc(beat)}</p>` : ""}
+    <section class="pad stack">
+      <div class="note good"><h3>Your strength</h3>${esc(info.plus)}</div>
+      <div class="note bad"><h3>Your watch-out</h3>${esc(info.watch)}</div>
+    </section>
+    <section class="pad stack" style="padding-top:0">
+      <h2>Now tell the group chat</h2>
+      <canvas id="card" width="1080" height="1350" aria-label="Your shareable result card"></canvas>
+      <button class="cta" id="share">Share my score</button>
+      <div class="row">
+        <a class="ghost" id="text" href="sms:?&body=${encodeURIComponent(shareText + " " + challengeLink)}">Text it</a>
+        <a class="ghost" id="fb" target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(challengeLink)}">Facebook</a>
+      </div>
+      <button class="ghost" id="copy">Challenge another parent</button>
+      <p class="small" id="copied"></p>
+    </section>
+    <section class="pad stack" style="padding-top:0">
+      <h2>Get your full Parent Playbook</h2>
+      <p>The rest of your type: what your kid hears, what to say on the ride home, and how you match with your co-parent.</p>
+      <form id="lead" class="stack"><input type="email" required placeholder="you@example.com" aria-label="Email address"><button class="cta">Send it to me</button></form>
+      <p class="small" id="thanks"></p>
+    </section>
+    <section class="pad stack" style="padding-top:0">
+      <h3>Next on KSNN (example)</h3>
+      <div class="note"><b>${esc(info.read)}</b><br><span class="small">In the live version, each type leads to its own KSNN story, which brings parents back to the site.</span></div>
+    </section>
+    <section class="pad" style="padding-top:0"><details><summary class="small">What this session tracked</summary><p class="small" id="events" style="margin-top:6px"></p></details></section>
+    ${footer()}`;
+  const card = document.getElementById("card");
+  drawCard(card, type, iq, band);
+  const shown = document.getElementById("iq");
+  const steps = 24; let step = 0;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) { shown.textContent = iq; } else {
+    const timer = setInterval(() => {
+      step += 1;
+      shown.textContent = Math.round(QUIZ.baseIQ + ((iq - QUIZ.baseIQ) * step) / steps);
+      if (step >= steps) clearInterval(timer);
+    }, 40);
+  }
+  const showEvents = () => { document.getElementById("events").textContent = (state.events || []).join(", "); };
+  showEvents();
+  document.getElementById("share").onclick = () => {
+    card.toBlob(async (blob) => {
+      const file = new File([blob], "my-sports-parent-iq.png", { type: "image/png" });
+      track("share", { via: "card" }); showEvents();
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], text: shareText, url: challengeLink }); } catch (e) { /* person closed the sheet */ }
+      } else {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob); a.download = file.name; a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      }
+    }, "image/png");
+  };
+  document.getElementById("text").onclick = () => { track("share", { via: "text" }); showEvents(); };
+  document.getElementById("fb").onclick = () => { track("share", { via: "facebook" }); showEvents(); };
+  document.getElementById("copy").onclick = async () => {
+    track("challenge_link"); showEvents();
+    const note = document.getElementById("copied");
+    try { await navigator.clipboard.writeText(`${shareText} ${challengeLink}`); note.textContent = "Link copied. Send it to the parent you suspect."; }
+    catch (e) { note.textContent = challengeLink; }
+  };
+  document.getElementById("lead").onsubmit = (event) => {
+    event.preventDefault();
+    track("email_capture"); showEvents();
+    event.target.querySelector("input").value = "";
+    document.getElementById("thanks").textContent = "Thanks. In this prototype, nothing was stored or sent.";
+  };
+  window.scrollTo(0, 0);
+}
+
+landing();
+</script>
+</body>
+</html>
